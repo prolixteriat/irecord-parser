@@ -1,0 +1,26 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fuzzywuzzy = "*"
+python-levenshtein = "*"
+word2number = "*"
+geopandas = "*"
+matplotlib = "*"
+xlrd = "*"
+openpyxl = "*"
+jinja2 = "*"
+xlsxwriter = "*"
+bng = "*"
+pyinstaller = "*"
+fiona = "*"
+pandas = "*"
+progress = "*"
+
+[dev-packages]
+autopep8 = "*"
+
+[requires]
+
