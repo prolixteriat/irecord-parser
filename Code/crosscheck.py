@@ -1,8 +1,6 @@
 '''
 About  : Implements the Crosschecker class which provides loads external 
          reference files and provides lookup functionality.
-Author : Kevin Morley
-Version: 1 (21-Mar-2023)
 '''
 
 # ------------------------------------------------------------------------------
@@ -11,41 +9,70 @@ import logging
 import pandas as pd
 
 from georegion import GeoRegion
+from configmgr import ConfigMgr
 
 # ------------------------------------------------------------------------------
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------------------
-# Class which loads external reference files and provides lookup functionality.
 
 class Crosschecker:
-
+    '''Class which loads external reference files and provides lookup functionality.'''
     # --------------------------------------------------------------------------
-    # Constructor.
 
-    def __init__(self, config):
+    def __init__(self, config: ConfigMgr) -> None:
+        '''Constructor.
+        Args: 
+            config (ConfigMgr) - object containing program configuration
+        Returns: 
+            N/A
         '''
-        Params: config (ConfigMgr)
-        Return: N/A
-        '''
-        self.config = config
-        self.georegion = GeoRegion(config)
-        self.duplicates = None      # TODO
-        self.excluded_taxons = {}
-        self.permissions = {}
-        self.sample_methods = {}
-        self.user_identities = {}
+        self.config: ConfigMgr = config
+        self.georegion: GeoRegion = GeoRegion(config)
+        self.abundance: dict[tuple[str, str], str] = {}
+        self.excluded_taxons: dict[str, str] = {}
+        self.permissions: dict[str, str] = {}
+        self.sample_methods: dict[str, str] = {}
+        self.user_identities: dict[str, str] = {}
         self.load_files()
 
     # --------------------------------------------------------------------------
-    # Map iRecord sample method to Swift record type.
-    
-    def get_record_type(self, sample_method):
+
+    def get_abundance(self, taxon_group: str, count: str) -> tuple[bool, str]:
+        '''Map iRecord count to Swift abundance.
+        Args:
+            taxon_group (string) - iRecord taxon group
+            count (string) - iRecord count
+        Returns: 
+            (tuple[bool,str]) - (True,mapped abundance type), else (False,None) if no match
         '''
-        Params: sample_method (string) - iRecord sample method
-        Return: (string/None) - mapped record type, else None if no match
+        tuple_key = (taxon_group.lower(), count.lower())
+        value = self.abundance[tuple_key] if tuple_key in self.abundance else None
+        if value is not None:
+            match = True
+        elif len(count) ==1 and count.isalpha():
+            match = True
+            value = 'Present'
+        else:
+            match = False
+        return (match, value)
+
+    # --------------------------------------------------------------------------
+
+    def get_record_type(self, sample_method: str, images: str) -> str|None:
+        '''Map iRecord sample method to Swift record type.
+        Args: 
+            sample_method (string) - iRecord sample method
+            images (string) - iRecord images
+        Returns: 
+            (string/None) - mapped record type, else None if no match
         '''
+        # If there are images, assume it's a photograph or video
+        images = images.strip()
+        if len(images) > 0:
+            return 'Photographed (or videoed)'
+
         sm = sample_method.lower()
         if len(sm) == 0:
             rv = 'Field record'
@@ -55,50 +82,53 @@ class Crosschecker:
             rv = None
         else:
             rv = None
-            log.warning(f'Unknown sample method: {sample_method}')
+            log.warning('Unknown sample method: %s', sample_method)
 
         return rv
-    
+
     # --------------------------------------------------------------------------
-    # Check whether a username had provided permission to use real name.
-    
-    def get_user_identity(self, username):
-        '''
-        Params: username (string) - 
-        Return: (string) - user identity if permission granted, else ''
+
+    def get_user_identity(self, username: str) -> str:
+        '''Check whether a user has provided permission to use their real name.
+        Args: 
+            username (string) - user name 
+        Returns: 
+            (string) - user identity if permission granted, else empty string
         "For some records a username may have been provided for the 
         recorder/determiner, please refer to the ‘Username Identities&Permission 
         tracker’ spreadsheet in DBO > Data > iRecord data > 
         Username Identities& Name Use Permission, to see if the 
         recorder/determiner has informed us of their iNaturalist/iRecord 
         username and have given us permission for us to use their name."
-
         '''
         rv = ''
-        if (username in self.user_identities and 
-            self.user_identities[username]['permission'] == True):
-                rv = self.user_identities['name']
+        if (username in self.user_identities and
+            self.user_identities[username]['permission'] is True):
+            rv = self.user_identities['name']
+
         return rv
 
     # --------------------------------------------------------------------------
-    # Return True if supplied insect taxon is not commonly referred to by rank 
-    # of 'family' (rather than, say, 'genus')
 
-    def is_excluded_taxon(self, taxon):
-        '''
-        Params: taxon (string) - 
-        Return: (bool) - True if is excluded taxon, else False
+    def is_excluded_taxon(self, taxon: str) -> bool:
+        '''Return True if supplied insect taxon is not commonly referred to by 
+        rank of 'family' (rather than, say, 'genus').
+        Args: 
+            taxon (string) - taxon
+        Returns: 
+            (bool) - True if is excluded taxon, else False
         '''
         rv = taxon in self.excluded_taxons
         return rv
 
     # --------------------------------------------------------------------------
-    # Return True if a Recorder has explicitly granted permission to cite name.
 
-    def is_permission_granted(self, name):
-        '''
-        Params: name (string) - Recorder identity
-        Return: (bool) - True if recorder had explicitly granted permission
+    def is_permission_granted(self, name: str) -> bool:
+        '''Return True if a Recorder has explicitly granted permission to cite name.
+        Args: 
+            name (string) - Recorder identity
+        Returns: 
+            (bool) - True if recorder had explicitly granted permission
         "before removing records with these licences, please check the ‘iNat 
         Permissions Tracker’ spreadsheet, as some recorders have provided us 
         with permission to use their records despite their records having these 
@@ -110,42 +140,57 @@ class Crosschecker:
         return rv
 
     # --------------------------------------------------------------------------
-    # Load and parse external reference files as defined in ConfigMgr object.
 
-    def load_files(self):
+    def load_files(self) -> None:
+        '''Load and parse external reference files as defined in config object.
+        Args: 
+            N/A
+        Returns: 
+            N/A
         '''
-        Params: N/A
-        Return: N/A
-        '''        
         log.info('Loading crosscheck files')
+        # Abundance mapping file -
+        self.abundance.clear()
+        if len(self.config.file_abundance) > 0:
+            log.debug('Loading abundance file: %s', self.config.file_abundance)
+            df = pd.read_excel(self.config.file_abundance)
+            # Map dataframe to dictionary containing the columns of interest
+            self.abundance = dict(
+                ((str(s[0]).lower(),
+                  str(s[1]).lower())
+                  if isinstance(s[0], str) and isinstance(s[1], str) else s,
+                  str(r).lower() if isinstance(r, str) else r)
+                for s, r in zip(zip(df['Taxon Group'],
+                                    df['Count of sex or stage']),
+                                    df['Abundance']))
         # Excluded taxons file -
         self.excluded_taxons.clear()
         if len(self.config.file_exc_taxons) > 0:
-            log.debug(f'Loading excluded taxons file: {self.config.file_exc_taxons}')
+            log.debug('Loading excluded taxons file: %s', self.config.file_exc_taxons)
             df = pd.read_excel(self.config.file_exc_taxons)
-            # Map dataframe to dictionary containing the columns of interest        
+            # Map dataframe to dictionary containing the columns of interest
             self.excluded_taxons = dict((t, '') for t in df['Taxons'])
-        # iNat permissions file - 
+        # iNat permissions file -
         # define column headers
         p_name = 'Please enter your full name'
         p_permission = ('Are you happy for your full name to be used with your '
                         'records (in the ways described above)?')
         self.permissions.clear()
         if len(self.config.file_permissions) > 0:
-            log.debug(f'Loading iNat permissions file: {self.config.file_permissions}')
+            log.debug('Loading iNat permissions file: %s', self.config.file_permissions)
             df = pd.read_excel(self.config.file_permissions)
-            # Map dataframe to dictionary containing the columns of interest        
-            self.permissions = dict((n, True if p.lower() == 'yes' else False) 
+            # Map dataframe to dictionary containing the columns of interest
+            self.permissions = dict((n, True if p.lower() == 'yes' else False)
                                 for n, p in  zip(df[p_name], df[p_permission]))
         # Sample method / record type mapping file -
         self.sample_methods.clear()
         if len(self.config.file_rec_type) > 0:
-            log.debug(f'Loading sample method/record type file: {self.config.file_rec_type}')
+            log.debug('Loading sample method/record type file: %s', self.config.file_rec_type)
             df = pd.read_excel(self.config.file_rec_type)
-            # Map dataframe to dictionary containing the columns of interest        
-            self.sample_methods = dict((s, r) for s, r in 
+            # Map dataframe to dictionary containing the columns of interest
+            self.sample_methods = dict((s, r) for s, r in
                                     zip(df['Sample Method'], df['Record Type']))
-        # User identities file - 
+        # User identities file -
         # define column headers
         i_username = ("Please enter your iRecord/iNaturalist username. (If you "
                       "use multiple recording platforms, e.g., bird track and "
@@ -158,43 +203,15 @@ class Crosschecker:
                         "RECORD's terms and conditions")
         self.user_identities.clear()
         if len(self.config.file_users) > 0:
-            log.debug(f'Loading user identities file: {self.config.file_users}')
+            log.debug('Loading user identities file: %s', self.config.file_users)
             df = pd.read_excel(self.config.file_users)
-            # Map dataframe to dictionary containing the columns of interest        
-            self.user_identities = dict((u, {'name': n, 'permission': 
-                                        True if p.lower() == 'yes' else False}) 
+            # Map dataframe to dictionary containing the columns of interest
+            self.user_identities = dict((u, {'name': n, 'permission':
+                                        True if p.lower() == 'yes' else False})
                 for u, n, p in zip(df[i_username], df[i_name], df[i_permission]))
 
 # ------------------------------------------------------------------------------
-# Test
-# ------------------------------------------------------------------------------
-# Run module-specific tests.
 
-def do_test():
-    '''
-    Params: N/A
-    Return: (bool) Returns True if tests succesful, else False
-    '''
-    log.info('-'*50)
-    log.info(f'Beginning test [crosscheck.py]...')
-    # TODO
-    config = ConfigMgr()
-    cc = Crosschecker(config)
-    rv = cc.get_record_type('412 mustard sampling') == 'Mustard sampling'
-    log.info(f'Finished test. Test passed: {rv}')
-    return rv
-
-# ------------------------------------------------------------------------------
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-            format='[%(module)s]-[%(funcName)s]-[%(levelname)s] - %(message)s')
-    from config import ConfigMgr
-
-    do_test()
-
-# ------------------------------------------------------------------------------
-       
 '''
 End
 '''

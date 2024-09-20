@@ -1,7 +1,5 @@
 '''
-About  : Main program file. See main() function.
-Author : Kevin Morley
-Version: 1 (21-Mar-2023)
+About  : Program entry point. See main() function.
 '''
 
 # ------------------------------------------------------------------------------
@@ -11,37 +9,36 @@ import logging
 import sys
 import traceback
 
-from iRecordController import iRecordController     # KPM
+from controller import RecordController
 
 # ------------------------------------------------------------------------------
 
-logging.basicConfig(level=logging.INFO, 
-            format='[%(module)s]-[%(funcName)s]-[%(levelname)s] - %(message)s', 
+logging.basicConfig(level=logging.INFO,
+            format='[%(module)s]-[%(funcName)s]-[%(levelname)s] - %(message)s',
             handlers= [
-                logging.FileHandler('debug.log', mode='w'), 
+                logging.FileHandler('debug.log', mode='w'),
                 logging.StreamHandler()
             ])
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------------------
-# Main
-# ------------------------------------------------------------------------------
-# Main program entry point. Instantiate controller object and call methods.
 
-def main(argv):
+def main() -> None:
+    '''Main program entry point. Instantiate controller object and call methods.
+    Args: 
+        N/A
+    Returns: 
+        N/A
     '''
-    Params: N/A
-    Return: N/A
-    '''
- 
-    help = 'iRecordController.py -i <INI file path>'
+    helpstr = 'main.py -i <INI file path>'
     try:
-        opts, args = getopt.getopt(argv,'hi:',['ini='])
+        argv = sys.argv[1:]
+        opts, _ = getopt.getopt(argv,'hi:',['ini='])
     except getopt.GetoptError:
         print(f'Incorrect command line option: {argv}')
-        print (f'Correct options are: "{help}"')
+        print(f'Correct options are: "{helpstr}"')
         sys.exit(2)
-    
+
     # Process command line options
     fn_config = None
     for opt, arg in opts:
@@ -57,20 +54,20 @@ def main(argv):
     # Execute the processing
     log.info('='*50)
     try:
-        rc = iRecordController(fn_config)
+        rc = RecordController(fn_config)
         rc.process()
-    except Exception as ex:
+    except Exception as ex: # pylint: disable=broad-exception-caught
         log.error(ex)
         traceback.print_exception(*sys.exc_info())
-    
+
 
 # ------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main()
 
 # ------------------------------------------------------------------------------
-       
+
 '''
 End
 '''

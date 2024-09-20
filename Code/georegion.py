@@ -1,74 +1,76 @@
 '''
 About  : Implements the GeoRegion class which identifies in-scope records based
          upon whether they lie within the target geographic region.
-Author : Kevin Morley
-Version: 1 (21-Mar-2023)
 '''
 
 # ------------------------------------------------------------------------------
 
-import bng
 import logging
+import os
+from typing import Final
+import bng
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import os
-
-from config import ConfigMgr            # KPM
 from shapely.geometry import Polygon
 
-# ------------------------------------------------------------------------------
-
-log = logging.getLogger(__name__)
+from configmgr import ConfigMgr
 
 # ------------------------------------------------------------------------------
-# Class which performs point-in-polygon operation to identify those records
-# within the target geographic region.
+
+log: logging.Logger = logging.getLogger(__name__)
+
+# ------------------------------------------------------------------------------
 
 class GeoRegion:
+    '''Class which performs point-in-polygon operation to identify those records
+       within the target geographic region.'''
 
-    COORDS = 'coords'
+    COORDS: Final[str] = 'coords'
 
     # --------------------------------------------------------------------------
-    # Constructor.
 
-    def __init__(self, config):
+    def __init__(self, config: ConfigMgr) -> None:
+        '''Constructor.
+        Args: 
+            config (ConfigMgr) - instance of class containing INI file
+        Returns: 
+            N/A
         '''
-        Params: config (ConfigMgr) - instance of class containing INI file
-        Return: N/A
-        '''
-        self.config = config        # instance of ConfigMgr class
-        self.gdf_region = None      # GeoDataFrame for region
-        self.gs_region = None       # GeoSeries for region
-        self.gs_inside = []         # list of GeoSeries objects inside region
-        self.gs_outside = []        # list of GeoSeries objects outside region
+        self.config: ConfigMgr = config            # instance of ConfigMgr class
+        self.gdf_region: gpd.GeoDataFrame = None   # GeoDataFrame for region
+        self.gs_region : gpd.GeoSeries= None       # GeoSeries for region
+        self.gs_inside: list[gpd.GeoSeries] = []   # list of objects inside region
+        self.gs_outside: list[gpd.GeoSeries] = []  # list of objects outside region
         self.load_shape()
         self.reset()
-            
-    # --------------------------------------------------------------------------
-    # Return the number of members of the gs_inside and gs_outside lists.
 
-    def count(self):
-        '''
-        Params: N/A
-        Return: (tuple: int/int) - count of members of inside/outside lists
+    # --------------------------------------------------------------------------
+
+    def count(self) -> tuple[int, int]:
+        '''Return the number of members of the gs_inside and gs_outside lists.
+        Args: 
+            N/A
+        Returns: 
+            (tuple: int/int) - count of members of inside/outside lists
         '''
         return len(self.gs_inside), len(self.gs_outside)
-    
-    # --------------------------------------------------------------------------
-    # Determine whether a given gridref is inside the region.
 
-    def gridref_in_region(self, gridref):
+    # --------------------------------------------------------------------------
+
+    def gridref_in_region(self, gridref: str) -> bool:
+        '''Determine whether a given gridref is inside the region.
+        Args: 
+            gridref (string) - grid reference
+        Returns: 
+            (bool) - True if gridref within region
         '''
-        Params: gridref (string) - grid reference
-        Return: (bool) - True if gridref within region
-        '''        
         poly = self.gridref_to_polygon(gridref)
         if poly is not None:
             gs_gridref = gpd.GeoSeries([poly], crs=self.gdf_region.crs)
-            i = self.gs_region.intersects(gs_gridref)
-            rv = i[0]
-            # Add Polygon to relevant list for future use
-            if rv == True:
+            intersects = self.gs_region.intersects(gs_gridref)
+            rv = intersects.any()
+            # Add GeoSeries to relevant list for future use
+            if rv:
                 self.gs_inside.append(gs_gridref)
             else:
                 self.gs_outside.append(gs_gridref)
@@ -76,15 +78,16 @@ class GeoRegion:
             # return True to avoid double-counting as 'gridref' filter will apply
             rv = True
 
-        return rv            
+        return rv
 
     # --------------------------------------------------------------------------
-    # Convert a supplied grid reference to a Polygon (eastings/northings)
 
-    def gridref_to_polygon(self, gridref):
-        '''
-        Params: gridref (string) - grid reference
-        Return: (Polygon) - equivalent Polygon object
+    def gridref_to_polygon(self, gridref: str) -> Polygon:
+        '''Convert a supplied grid reference to a Polygon (eastings/northings).
+        Args: 
+            gridref (string) - grid reference
+        Returns: 
+            (Polygon) - equivalent Polygon object
         '''
         try:
             e_l, n_l = bng.to_osgb36(gridref)
@@ -99,54 +102,56 @@ class GeoRegion:
                 s = 10
             else:
                 s = 100
-                log.error(f'Unable to convert grid reference: {gridref}')
+                log.error('Unable to convert grid reference: %s', gridref)
 
             e_u = e_l + s
             n_u = n_l + s
 
-            p = Polygon([(e_l, n_l), 
-                        (e_l, n_u), 
-                        (e_u, n_u), 
+            p = Polygon([(e_l, n_l),
+                        (e_l, n_u),
+                        (e_u, n_u),
                         (e_u, n_l)])
         except bng.BNGError as ex:
             # Invalid format gridref, including too short - e.g. 'SJ78'
-            log.debug(f'Unable to convert gridref: {gridref}')
+            log.debug('Unable to convert gridref: %s', gridref)
+            log.debug(ex)
             p = None
 
         return p
 
     # --------------------------------------------------------------------------
-    # Load the GIS shape file.
 
     def load_shape(self):
-        '''
-        Params: N/A
-        Return: N/A
+        '''Load the GIS shape file.
+        Args: 
+            N/A
+        Returns: 
+            N/A
         '''
         fn = self.config.file_gis
-        log.debug(f'Loading GIS file: {fn}')
+        log.debug('Loading GIS file: %s', fn)
         self.gdf_region = gpd.read_file(fn)
         self.gs_region = self.gdf_region['geometry']
 
     # --------------------------------------------------------------------------
-    # Plot map showing region and polygons inside/outside the region.
 
-    def plot(self, filename):
+    def plot(self, filename: str) -> None:
+        '''Plot map showing region and polygons inside/outside the region.
+        Args: 
+            filename (string) - filename associated with data
+        Returns: 
+            N/A
         '''
-        Params: filename (string) - filename associated with data
-        Return: N/A
-        '''
-
         # Only plot if config flag is set to True
-        if self.config.plot == False:
+        if self.config.plot is False:
             return
         log.info('Generating plot')
         # Region
-        base = self.gdf_region.plot(linewidth=1, edgecolor='black', 
+        base = self.gdf_region.plot(linewidth=1, edgecolor='black',
                                     facecolor='white', legend=True)
+        # Inside region
         '''
-        # Takes a long time, so comment-out unless required...
-        # Inside region            
+        # Takes a long time valid points, so comment-out unless required...
         for gs in self.gs_inside:
             gs.plot(ax=base, edgecolor='red')
         '''
@@ -158,72 +163,23 @@ class GeoRegion:
                  f'(>= 4 digits)\nFile: {os.path.basename(filename)}')
         plt.title(title)
         plt.tight_layout()
-        plt.ion()   # interactive on - non-blocking      
+        plt.ion()   # interactive on - non-blocking
         plt.show()
 
     # --------------------------------------------------------------------------
-    # Initialise
-    
+
     def reset(self):
-        '''
-        Params: N/A
-        Return: N/A
+        '''Initialise.
+        Args: 
+            N/A
+        Returns: 
+            N/A
         '''
         self.gs_inside.clear()
         self.gs_outside.clear()
 
-
-# ------------------------------------------------------------------------------
-# Test
-# ------------------------------------------------------------------------------
-# Run module-specific tests.
-
-def do_test():
-    '''
-    Params: N/A
-    Return: (bool) Returns True if tests succesful, else False
-    '''
-    
-    log.info('-'*50)
-    log.info('Beginning test [georegion.py]...')
-    config = ConfigMgr()    
-    geo = GeoRegion(config)
-    gridrefs = [('SJ403661', True),
-                ('SJ405664', True),
-                ('SJ406667', True),
-                ('SJ40696678', True),
-                ('SJ414667', True),
-                ('SJ415665', True),
-                ('SJ41756640',True),
-                ('SH874544', False),
-                ('SH83764493', False), 
-                ('SP450440', False),
-                ('SP36593729', False)] 
-    rv = True
-    for gr in gridrefs:
-        inside = geo.gridref_in_region(gr[0]) 
-        ok = inside == gr[1]
-        if not ok:
-            rv = False
-        log.info(f'Grid reference: {gr}  inside: {inside}  correct: {ok}')  
-
-    i_i, i_o = geo.count()
-    log.info(f' No. inside: {i_i}, No. outside: {i_o}')
-    geo.plot()
-    log.info(f'Finished test. Test passed: {rv}')    
-    # input('Press Enter key to continue...')  
-    return rv
-
 # ------------------------------------------------------------------------------
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-            format='[%(module)s]-[%(funcName)s]-[%(levelname)s] - %(message)s')
-        
-    do_test()
-
-# ------------------------------------------------------------------------------
-       
 '''
 End
 '''

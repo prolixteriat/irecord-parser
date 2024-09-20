@@ -1,0 +1,216 @@
+'''
+About  : Implements the RecordParser class which performs the data input, 
+         parsing and output processes for a single iRecord data file.
+'''
+
+# ------------------------------------------------------------------------------
+
+import csv
+import logging
+import os
+import threading
+import time
+import pandas as pd
+from progress import spinner
+from progress.bar import Bar
+
+import const
+import utils
+from configmgr import ConfigMgr
+from crosscheck import Crosschecker
+from rules import DupeDict, Records, Rules
+
+# ------------------------------------------------------------------------------
+
+log: logging.Logger = logging.getLogger(__name__)
+
+# ------------------------------------------------------------------------------
+
+class RecordParser:
+    '''Class which orchestrates the data input, parsing and output processes.'''
+
+    # --------------------------------------------------------------------------
+
+    def __init__(self, config: ConfigMgr) -> None:
+        '''Constructor.
+        Args: 
+            config (ConfigMgr) - instance of class containing INI file
+        Returns: 
+            N/A
+        '''
+        self.config: ConfigMgr = config # instance of ConfigMgr class
+        self.crosscheck: Crosschecker = Crosschecker(self.config)
+        self.filename: str = None       # input filename
+        self.records: Records = []      # Records read from file
+        self.skipped: Records = []      # Records skipped in Swift format
+        self.swift: Records = []        # Records to be exported in Swift format
+
+    # --------------------------------------------------------------------------
+
+    def output_excel(self):
+        '''Output results to multitab Excel workbook.
+        Args: 
+            N/A
+        Returns: 
+            N/A 
+        See: 
+            https://xlsxwriter.readthedocs.io/
+        '''
+        # ----------------------------------------------------------------------
+        #
+        def add_sheet(writer: pd.ExcelWriter, name: str, data: Records,
+                      cols: list[str], formatxls: any, freeze_col: int) -> None:
+            '''Add new sheet to workbook, populate and format as required.
+            Args: 
+                writer (pandas ExcelWriter) - writer object
+                name (string) - name of sheet
+                data (list of dicts) - data to be written to sheet
+                cols (list) - columns names in correct order
+                formatxls (xlsxwriter format) - sheet formatting
+                freeze_col (int) - column at which to freeze scrolling
+            Returns: 
+                N/A 
+            '''
+            log.debug('Writing tab: %s', name)
+            # Check whether we have any data to write
+            if len(data) > 0:
+                # Create a (dict of lists) dataframe from a (list of dicts)
+                d = {key: [i[key] for i in data] for key in data[0]}
+                df = pd.DataFrame(d)
+                # Reorder columns
+                df = df[cols]
+            else:
+                # Create empty dataframe
+                df = pd.DataFrame(columns=cols)
+            df.to_excel(writer, sheet_name=name, index=False)
+            # Apply formatting to the sheet
+            sheet = writer.sheets[name]
+            sheet.freeze_panes(1, freeze_col)
+            for col_num, value in enumerate(df.columns.values):
+                sheet.write(0, col_num, value, formatxls)
+        # ----------------------------------------------------------------------
+        # Get filename
+        fb = os.path.basename(self.filename)
+        fb = os.path.splitext(fb)[0]
+        fn = os.path.join(self.config.dir_data_out, fb + '.xlsx')
+        log.info('Writing Excel file: %s', fn)
+        with pd.ExcelWriter(fn, engine='xlsxwriter') as writer:
+            # Create format for header row of each sheet - uses xlsxwriter
+            workbook = writer.book
+            formatxls = workbook.add_format({
+                'bold': True,
+                'text_wrap': True,
+                'valign': 'top',
+                'bg_color': '#F6F4F4'})
+
+            formatxls.set_border(1)
+            formatxls.set_border_color('silver')
+            # Create sheets
+            add_sheet(writer, 'Key', self.records, const.I_COLUMNS, formatxls, 1)
+            add_sheet(writer, 'Swift', self.swift, const.S_COLUMNS, formatxls, 3)
+            add_sheet(writer, 'Skipped', self.skipped, const.S_COLUMNS, formatxls, 3)
+
+    # --------------------------------------------------------------------------
+
+    def output_results(self) -> None:
+        '''Output results to files.
+        Args: 
+            N/A
+        Returns: 
+            N/A 
+        '''
+        # ----------------------------------------------------------------------
+        # Write a single CSV file
+        def write_file(fn_txt: str, data: Records, fields: list[str]):
+            fb = os.path.basename(self.filename)
+            fn = os.path.join(self.config.dir_data_out,
+                              utils.append_filename(fb, fn_txt))
+            log.info('Writing %s file: %s', fn_txt, fn)
+            with open(fn, 'w', encoding='utf-8') as out_file:
+                writer = csv.DictWriter(out_file, lineterminator='\r',
+                                        quoting=csv.QUOTE_NONNUMERIC,
+                                        fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(data)
+        # ----------------------------------------------------------------------
+
+        log.info('Writing results to CSV files')
+        write_file('_key', self.records, const.I_COLUMNS)
+        write_file('_skip', self.skipped, const.S_COLUMNS)
+        write_file('_swift', self.swift, const.S_COLUMNS)
+        # Only produce Excel workbook if config flag set
+        if self.config.excel is True:
+            # Use threading to allow spinner animation
+            thread = threading.Thread(target=self.output_excel)
+            thread.start()
+            with spinner.Spinner('Writing Excel file...') as spin:
+                while thread.is_alive():
+                    spin.next()
+                    time.sleep(0.1)
+            thread.join()
+
+    # --------------------------------------------------------------------------
+
+    def process_records(self) -> None:
+        '''Process each of the iRecord records.
+        Args: 
+            N/A
+        Returns: 
+            N/A 
+        '''
+        log.info('Processing records')
+        # Maintain a set of created records for de-duping
+        dupechecks: DupeDict = dict()
+        with Bar('Processing records...', max=len(self.records)) as progbar:
+            for rec in self.records:
+                progbar.next()
+                rules = Rules(rec, self.crosscheck)
+                res = rules.get_swift()
+                # Determine whether record should be skipped
+                itype, inote = rules.is_skip(res, dupechecks)
+                if len(itype) > 0:
+                    # Handle cloned results
+                    for r in res:
+                        r[const.S_IMPORTTYPE] = itype
+                        r[const.S_IMPORTNOTE] = inote
+                    self.skipped += res
+                else:
+                    self.swift += res
+
+        log.info('Number of iRecord records: %s', f'{len(self.records):,}')
+        log.info('Number of skipped records: %s', f'{len(self.skipped):,}')
+        log.info('Number of Swift records: %s', f'{len(self.swift):,}')
+        self.crosscheck.georegion.plot(self.filename)
+        _, outside = self.crosscheck.georegion.count()
+        log.info('Number of gridrefs outside region: %s', f'{outside:,}')
+        self.output_results()
+
+    # --------------------------------------------------------------------------
+
+    def read_file(self, fn: str) -> bool:
+        '''Read the contents of a given CSV file.
+        Args: 
+            fn (string) - CSV filename
+        Returns: 
+            (bool) - True if successful, else False
+        '''
+        log.info('Reading file: %s', fn)
+        self.filename = fn
+        rv: bool = True
+        self.crosscheck.georegion.reset()
+        self.records.clear()
+        with open(fn, mode='r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for ix, dct in enumerate(reader):
+                dct[const.I_KEY] = ix + 1
+                self.records.append(dct)
+
+        log.debug('Number of records read from file: %i', len(self.records))
+        self.process_records()
+        return rv
+
+# ------------------------------------------------------------------------------
+
+'''
+End
+'''

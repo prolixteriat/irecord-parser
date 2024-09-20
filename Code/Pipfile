@@ -4,23 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-fuzzywuzzy = "*"
-python-levenshtein = "*"
 word2number = "*"
 geopandas = "*"
 matplotlib = "*"
-xlrd = "*"
-openpyxl = "*"
-jinja2 = "*"
 xlsxwriter = "*"
 bng = "*"
-pyinstaller = "*"
-fiona = "*"
 pandas = "*"
 progress = "*"
+pyinstaller = "*"
+fiona = "*"
+openpyxl = "*"
 
 [dev-packages]
 autopep8 = "*"
+pytest = "*"
 
 [requires]
-

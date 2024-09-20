@@ -10,13 +10,14 @@ exporting in a format suitable for post-processing and, specifically, subsequent
 - **Data_In** - contains the iRecord data to be processed.
 - **Data_Out** - contains the data produced as output by the script.
 - **GIS** - contains the vice-county boundary data optionally used by the script.
+- **Tests** - contains automated script unit tests.
 
 ##	Installation
 Installation uses the [Pipenv](https://pipenv.pypa.io/en/latest/) package manager. In order to install Pipenv if it is not already installed:
 
 `pip install pipenv`
 
-In order to install this project's dependencies, from within the Code folder run the command:
+In order to install this project's dependencies, from within the `Code` folder run the command:
 
 `pipenv install`
 
@@ -28,4 +29,11 @@ In order to install this project's dependencies, from within the Code folder run
 -	Progress messages will be displayed in terminal window. The same messages will also be written to the `Code\debug.log` file. 
 -	Note that production of an Excel workbook containing the output results may take several minutes if you have selected that option within the `config.ini` file.
 -	Once completed, you will find the output files in the `Data_Out` folder.
+
+## Standalone Execution
+- You can build a standalone executable version of the script using the following command from with the `Code` folder:
+```
+pyinstaller main.py --name irecord2swift --hidden-import fiona._shim --distpath <targetdir>
+```
+- Once created, you can use the `run.bat` batch file to execute the script.
 
