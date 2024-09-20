@@ -2,7 +2,7 @@
 
 ## Overview
 This script takes as input an export from [iRecord](https://irecord.org.uk/) and applies a series of validation and transformation rules before
-exporting in a format suitable for post-processing and, specifically, subsequent import to the GEMU Swift application.
+exporting in a format suitable for post-processing and, specifically, subsequent import to the GMEU Swift application.
 
 ## Structure
 - **Code** - contains the script code.
