@@ -58,9 +58,9 @@ class Crosschecker:
         '''
         tuple_key = (taxon_group.lower(), count.lower())
         value = self.abundance[tuple_key] if tuple_key in self.abundance else ''
-        if value is not None:
+        if len(value) > 0:
             match = True
-        elif len(count) ==1 and count.isalpha():
+        elif len(count) == 1 and count.isalpha():
             match = True
             value = 'Present'
         else:
