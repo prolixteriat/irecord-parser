@@ -36,9 +36,9 @@ class GeoRegion:
         Returns: 
             N/A
         '''
-        self.config: ConfigMgr = config            # instance of ConfigMgr class
-        self.gdf_region: gpd.GeoDataFrame = None   # GeoDataFrame for region
-        self.gs_region : gpd.GeoSeries= None       # GeoSeries for region
+        self.config: ConfigMgr = config                # instance of ConfigMgr class
+        self.gdf_region: gpd.GeoDataFrame|None = None  # GeoDataFrame for region
+        self.gs_region : gpd.GeoSeries|None = None     # GeoSeries for region
         self.gs_inside: list[gpd.GeoSeries] = []   # list of objects inside region
         self.gs_outside: list[gpd.GeoSeries] = []  # list of objects outside region
         self.load_shape()
@@ -65,8 +65,8 @@ class GeoRegion:
             (bool) - True if gridref within region
         '''
         poly = self.gridref_to_polygon(gridref)
-        if poly is not None:
-            gs_gridref = gpd.GeoSeries([poly], crs=self.gdf_region.crs)
+        if poly is not None and self.gs_region is not None:
+            gs_gridref = gpd.GeoSeries([poly], crs=self.gdf_region.crs) # type: ignore
             intersects = self.gs_region.intersects(gs_gridref)
             rv = intersects.any()
             # Add GeoSeries to relevant list for future use
@@ -82,7 +82,7 @@ class GeoRegion:
 
     # --------------------------------------------------------------------------
 
-    def gridref_to_polygon(self, gridref: str) -> Polygon:
+    def gridref_to_polygon(self, gridref: str) -> Polygon|None:
         '''Convert a supplied grid reference to a Polygon (eastings/northings).
         Args: 
             gridref (string) - grid reference
@@ -131,7 +131,8 @@ class GeoRegion:
         fn = self.config.file_gis
         log.debug('Loading GIS file: %s', fn)
         self.gdf_region = gpd.read_file(fn)
-        self.gs_region = self.gdf_region['geometry']
+        if self.gdf_region is not None:
+            self.gs_region = self.gdf_region['geometry'] # type: ignore
 
     # --------------------------------------------------------------------------
 
@@ -147,6 +148,9 @@ class GeoRegion:
             return
         log.info('Generating plot')
         # Region
+        if self.gdf_region is None:
+            log.info('No region to plot')
+            return
         base = self.gdf_region.plot(linewidth=1, edgecolor='black',
                                     facecolor='white', legend=True)
         # Inside region

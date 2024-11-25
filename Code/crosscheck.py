@@ -6,6 +6,8 @@ About  : Implements the Crosschecker class which provides loads external
 # ------------------------------------------------------------------------------
 
 import logging
+from typing import TypedDict
+
 import pandas as pd
 
 from georegion import GeoRegion
@@ -14,6 +16,13 @@ from configmgr import ConfigMgr
 # ------------------------------------------------------------------------------
 
 log: logging.Logger = logging.getLogger(__name__)
+
+# ------------------------------------------------------------------------------
+
+class UserIdentity(TypedDict):
+    '''Helper class to manage user identity permissions.'''
+    name: str
+    permission: bool
 
 # ------------------------------------------------------------------------------
 
@@ -32,9 +41,9 @@ class Crosschecker:
         self.georegion: GeoRegion = GeoRegion(config)
         self.abundance: dict[tuple[str, str], str] = {}
         self.excluded_taxons: dict[str, str] = {}
-        self.permissions: dict[str, str] = {}
+        self.permissions: dict[str, bool] = {}
         self.sample_methods: dict[str, str] = {}
-        self.user_identities: dict[str, str] = {}
+        self.user_identities: dict[str, UserIdentity] = {}
         self.load_files()
 
     # --------------------------------------------------------------------------
@@ -45,10 +54,10 @@ class Crosschecker:
             taxon_group (string) - iRecord taxon group
             count (string) - iRecord count
         Returns: 
-            (tuple[bool,str]) - (True,mapped abundance type), else (False,None) if no match
+            (tuple[bool,str]) - (True,mapped abundance type), else (False,'') if no match
         '''
         tuple_key = (taxon_group.lower(), count.lower())
-        value = self.abundance[tuple_key] if tuple_key in self.abundance else None
+        value = self.abundance[tuple_key] if tuple_key in self.abundance else ''
         if value is not None:
             match = True
         elif len(count) ==1 and count.isalpha():
@@ -102,10 +111,16 @@ class Crosschecker:
         username and have given us permission for us to use their name."
         '''
         rv = ''
+        if username in self.user_identities:
+            urec = self.user_identities[username]
+            if urec['permission'] is True:
+                rv = urec['name']
+
+        '''
         if (username in self.user_identities and
             self.user_identities[username]['permission'] is True):
-            rv = self.user_identities['name']
-
+            rv = self.user_identities[username]['name']
+        '''
         return rv
 
     # --------------------------------------------------------------------------

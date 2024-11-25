@@ -10,6 +10,8 @@ import logging
 import os
 import threading
 import time
+from typing import Any
+
 import pandas as pd
 from progress import spinner
 from progress.bar import Bar
@@ -40,7 +42,7 @@ class RecordParser:
         '''
         self.config: ConfigMgr = config # instance of ConfigMgr class
         self.crosscheck: Crosschecker = Crosschecker(self.config)
-        self.filename: str = None       # input filename
+        self.filename: str = ''         # input filename
         self.records: Records = []      # Records read from file
         self.skipped: Records = []      # Records skipped in Swift format
         self.swift: Records = []        # Records to be exported in Swift format
@@ -59,7 +61,7 @@ class RecordParser:
         # ----------------------------------------------------------------------
         #
         def add_sheet(writer: pd.ExcelWriter, name: str, data: Records,
-                      cols: list[str], formatxls: any, freeze_col: int) -> None:
+                      cols: list[str], formatxls: Any, freeze_col: int) -> None:
             '''Add new sheet to workbook, populate and format as required.
             Args: 
                 writer (pandas ExcelWriter) - writer object
@@ -97,7 +99,7 @@ class RecordParser:
         with pd.ExcelWriter(fn, engine='xlsxwriter') as writer:
             # Create format for header row of each sheet - uses xlsxwriter
             workbook = writer.book
-            formatxls = workbook.add_format({
+            formatxls = workbook.add_format({ # type: ignore
                 'bold': True,
                 'text_wrap': True,
                 'valign': 'top',

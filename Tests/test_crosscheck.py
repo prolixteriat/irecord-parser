@@ -18,7 +18,7 @@ def test_record_type_mapping():
 
     config = ConfigMgr('Config/debug.ini')
     cc = Crosschecker(config)
-    rv = cc.get_record_type('412 mustard sampling') == 'Mustard sampling'
+    rv = cc.get_record_type('412 mustard sampling', '') == 'Mustard sampling'
 
     assert rv
 
@@ -28,9 +28,9 @@ def test_abundance_mapping():
 
     config = ConfigMgr('Config/debug.ini')
     cc = Crosschecker(config)
-    rv = cc.get_abundance('insect - butterfly', 'D') == '30 to 99'
-
-    assert rv
+    (match, value) = cc.get_abundance('insect - butterfly', 'D')
+    
+    assert match and value == '30 to 99'
 
 # ------------------------------------------------------------------------------
 

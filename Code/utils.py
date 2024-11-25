@@ -124,7 +124,7 @@ def word_to_num(txt: str) -> int|None:
         (int|None) - converted value
     '''
     try:
-        rv = w2n.word_to_num(txt)
+        rv = int(w2n.word_to_num(txt))
     except ValueError:
         rv = None
 
@@ -157,6 +157,9 @@ class ElapsedTime:
         Returns: 
             N/A
         '''
+        if self.start is None:
+            log.error('Timer not started')
+            return
         secs = time.perf_counter() - self.start
         log.info('Elapsed time: %s mins /  %s seconds',
                  f'{(secs/60):,.1f}', f'{int(secs):,}')

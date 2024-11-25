@@ -26,8 +26,8 @@ DEFAULT_FN_CONFIG: Final[str] = '../Config/config.ini'  # default config filenam
 class ConfigMgr:
     '''Class which loads runtime configuration from file.'''
 
-    dir_data_in: str = None       # folder in which to find iRecords to be processed
-    dir_data_out: str = None      # folder in which to find iRecords to be processed
+    dir_data_in: str = ''         # folder in which to find iRecords to be processed
+    dir_data_out: str = ''        # folder in which to find iRecords to be processed
     excel: bool = True            # produce Excel workbook results file
     file_abundance: str = ''      # path to abundance mapping file
     file_duplicates: str = ''     # path to duplicate records file
@@ -41,7 +41,7 @@ class ConfigMgr:
 
     # --------------------------------------------------------------------------
 
-    def __init__(self, fn_config: str=None) -> None:
+    def __init__(self, fn_config: str|None=None) -> None:
         '''Constructor.
         Args: 
             fn_config (string) = config filename

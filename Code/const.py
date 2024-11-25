@@ -184,7 +184,7 @@ S_COLUMNS: Final[list[str]] = [
 # ------------------------------------------------------------------------------
 # Orders making up the Insecta class (classes not included in iRecord exports).
 
-ORDERS_INSECTA: Final[list[str]] = {
+ORDERS_INSECTA: Final[set[str]] = {
     'blattodea',
     'coleoptera',
     'dermaptera',
@@ -219,7 +219,7 @@ ORDERS_INSECTA: Final[list[str]] = {
 # Sex/stage terms.
 FEMALE: Final[str] = 'female'       # Text to be written to Swift upload CSV
 MALE: Final[str] = 'male'           # Text to be written to Swift upload CSV
-SEX_TERMS: Final[set[str]] = {
+SEX_TERMS: Final[dict[str, str]] = {
     'males': MALE,
     'male': MALE,
     'm': MALE,
@@ -235,7 +235,7 @@ ADULT: Final[str] = 'Adult'         # Text to be written to Swift upload CSV
 JUVENILE: Final[str] = 'Juvenile'   # Text to be written to Swift upload CSV
 LARVA: Final[str] = 'Larva'
 NYMPH: Final[str] = 'Nymph'
-STAGE_TERMS: Final[set[str]] = {
+STAGE_TERMS: Final[dict[str, str]] = {
     'adults': ADULT,
     'adult': ADULT,
     'ads': ADULT,

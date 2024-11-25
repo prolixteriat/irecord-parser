@@ -22,7 +22,7 @@ class RecordController:
     '''Class which orchestrates the data input, parsing and output processes.'''
     # --------------------------------------------------------------------------
 
-    def __init__(self, fn_ini: str=None) -> None:
+    def __init__(self, fn_ini: str|None=None) -> None:
         '''Constructor.
         Args: 
             fn_ini (string) - filename of INI config file (None use default)
