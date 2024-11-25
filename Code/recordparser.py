@@ -198,6 +198,9 @@ class RecordParser:
         '''
         log.info('Reading file: %s', fn)
         self.filename = fn
+        self.records.clear()
+        self.skipped.clear()
+        self.swift.clear()
         rv: bool = True
         self.crosscheck.georegion.reset()
         self.records.clear()
