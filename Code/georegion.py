@@ -129,6 +129,9 @@ class GeoRegion:
             N/A
         '''
         fn = self.config.file_gis
+        if len(fn) == 0:
+            log.info('No GIS file specified')
+            return
         log.debug('Loading GIS file: %s', fn)
         self.gdf_region = gpd.read_file(fn)
         if self.gdf_region is not None:
