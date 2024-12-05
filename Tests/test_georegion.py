@@ -10,12 +10,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../Code'))
 
 from configmgr import ConfigMgr
 from georegion import GeoRegion
+from utils_tests import INI_FILE
 
 # ------------------------------------------------------------------------------
 
 def test_point_in_poly():
 
-    config = ConfigMgr('Config/debug.ini')
+    config = ConfigMgr(INI_FILE)
 
     geo = GeoRegion(config)
     gridrefs = [('SJ403661', True),
@@ -35,10 +36,11 @@ def test_point_in_poly():
         ok = inside == gr[1]
         if not ok:
             rv = False
-        print(f'Grid reference: {gr}  inside: {inside} correct: {ok}')
+            print(f'Grid reference: {gr}  inside: {inside} correct: {ok}')
 
     i_i, i_o = geo.count()
-    print(f'No. inside: {i_i}, No. outside: {i_o}')
+    if not rv:
+        print(f'No. inside: {i_i}, No. outside: {i_o}')
     ## geo.plot('test')
     assert rv
 

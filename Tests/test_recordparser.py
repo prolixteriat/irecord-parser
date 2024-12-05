@@ -10,14 +10,15 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../Code'))
 
 from configmgr import ConfigMgr
 from recordparser import RecordParser
+from utils_tests import INI_FILE
 
 # ------------------------------------------------------------------------------
 
 def test_parse_record_file():
 
-    config = ConfigMgr('Config/debug.ini')
+    config = ConfigMgr(INI_FILE)
     rp = RecordParser(config)
-    fn = 'Data_In/iRecord Data 09-01-2020 - 31-01-2020_original.csv'
+    fn = 'Tests/Data_In/test_data.csv'
     rv = rp.read_file(fn)
     assert rv is True
 
