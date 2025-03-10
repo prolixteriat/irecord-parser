@@ -49,6 +49,31 @@ class RecordParser:
 
     # --------------------------------------------------------------------------
 
+    def check_columns(self) -> bool:
+        '''Check that the input file has the correct columns.
+        Args: 
+            N/A
+        Returns:
+            (bool) - True if all required columns are present, else False
+        '''
+        rv: bool = True
+        extra = [col for col in self.records[0] if col not in const.I_COLUMNS]
+        if len(extra) > 0:
+            log.warning('Input file has unused columns: %s', extra)
+            # Remove the unused keys from each dictionary
+            for col in extra:
+                for record in self.records:
+                    record.pop(col, None)
+
+        missing = [col for col in const.I_COLUMNS if col not in self.records[0]]
+        if len(missing) > 0:
+            log.error('Input file does not contain all required columns: %s', missing)
+            rv = False
+
+        return rv
+
+    # --------------------------------------------------------------------------
+
     def output_excel(self):
         '''Output results to multitab Excel workbook.
         Args: 
@@ -210,8 +235,12 @@ class RecordParser:
                 dct[const.I_KEY] = ix + 1
                 self.records.append(dct)
 
-        log.debug('Number of records read from file: %i', len(self.records))
-        self.process_records()
+        # Check that the input file has the correct columns
+        rv = self.check_columns()
+        if rv is True:
+            log.debug('Number of records read from file: %i', len(self.records))
+            self.process_records()
+
         return rv
 
 # ------------------------------------------------------------------------------
