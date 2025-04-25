@@ -56,7 +56,7 @@ class Crosschecker:
         Returns: 
             (tuple[bool,str]) - (True,mapped abundance type), else (False,'') if no match
         '''
-        tuple_key = (taxon_group.lower(), count.lower())
+        tuple_key = (taxon_group.strip().lower(), count.strip().lower())
         value = self.abundance[tuple_key] if tuple_key in self.abundance else ''
         if len(value) > 0:
             match = True
@@ -82,7 +82,7 @@ class Crosschecker:
         if len(images) > 0:
             return 'Photographed (or videoed)'
 
-        sm = sample_method.lower()
+        sm = sample_method.strip().lower()
         if len(sm) == 0:
             rv = 'Field record'
         elif sm in self.sample_methods:
@@ -111,16 +111,12 @@ class Crosschecker:
         username and have given us permission for us to use their name."
         '''
         rv = ''
-        if username in self.user_identities:
-            urec = self.user_identities[username]
+        un = username.strip().lower()
+        if un in self.user_identities:
+            urec = self.user_identities[un]
             if urec['permission'] is True:
                 rv = urec['name']
 
-        '''
-        if (username in self.user_identities and
-            self.user_identities[username]['permission'] is True):
-            rv = self.user_identities[username]['name']
-        '''
         return rv
 
     # --------------------------------------------------------------------------
@@ -133,7 +129,7 @@ class Crosschecker:
         Returns: 
             (bool) - True if is excluded taxon, else False
         '''
-        rv = taxon in self.excluded_taxons
+        rv = taxon.strip().lower() in self.excluded_taxons
         return rv
 
     # --------------------------------------------------------------------------
@@ -151,7 +147,8 @@ class Crosschecker:
         Licensed Records Use Permission. ONLY REMOVE LICENCED RECORDS WHICH WE 
         DO NOT HAVE PERMISSIONS TO USE."
         '''
-        rv = self.permissions[name] if name in self.permissions else False
+        name_lower = name.strip().lower()
+        rv = self.permissions[name_lower] if name_lower in self.permissions else False
         return rv
 
     # --------------------------------------------------------------------------
@@ -184,7 +181,7 @@ class Crosschecker:
             log.debug('Loading excluded taxons file: %s', self.config.file_exc_taxons)
             df = pd.read_excel(self.config.file_exc_taxons)
             # Map dataframe to dictionary containing the columns of interest
-            self.excluded_taxons = dict((t, '') for t in df['Taxons'])
+            self.excluded_taxons = dict((t.lower(), '') for t in df['Taxons'])
         # iNat permissions file -
         # define column headers
         p_name = 'Please enter your full name'
@@ -195,7 +192,7 @@ class Crosschecker:
             log.debug('Loading iNat permissions file: %s', self.config.file_permissions)
             df = pd.read_excel(self.config.file_permissions)
             # Map dataframe to dictionary containing the columns of interest
-            self.permissions = dict((n, True if p.lower() == 'yes' else False)
+            self.permissions = dict((n.lower(), True if p.lower() == 'yes' else False)
                                 for n, p in  zip(df[p_name], df[p_permission]))
         # Sample method / record type mapping file -
         self.sample_methods.clear()
@@ -203,7 +200,7 @@ class Crosschecker:
             log.debug('Loading sample method/record type file: %s', self.config.file_rec_type)
             df = pd.read_excel(self.config.file_rec_type)
             # Map dataframe to dictionary containing the columns of interest
-            self.sample_methods = dict((s, r) for s, r in
+            self.sample_methods = dict((s.lower(), r) for s, r in
                                     zip(df['Sample Method'], df['Record Type']))
         # User identities file -
         # define column headers
@@ -221,7 +218,7 @@ class Crosschecker:
             log.debug('Loading user identities file: %s', self.config.file_users)
             df = pd.read_excel(self.config.file_users)
             # Map dataframe to dictionary containing the columns of interest
-            self.user_identities = dict((u, {'name': n, 'permission':
+            self.user_identities = dict((u.lower(), {'name': n, 'permission':
                                         True if p.lower() == 'yes' else False})
                 for u, n, p in zip(df[i_username], df[i_name], df[i_permission]))
 
