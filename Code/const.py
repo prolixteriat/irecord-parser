@@ -15,6 +15,7 @@ C_FILE_DUPLICATES: Final[str] = 'File_Duplicates'
 C_FILE_GIS: Final[str] = 'File_GIS'
 C_FILE_EXC_TAXONS: Final[str] = 'File_ExcludedTaxons'
 C_FILE_PERMS: Final[str] = 'File_iNatPermissions'
+C_FILE_PROCESSED: Final[str] = 'File_Processed'
 C_FILE_REC_TYPE: Final[str] = 'File_RecordType'
 C_FILE_USERS: Final[str] = 'File_UserIdenties'
 C_LOGGING: Final[str] = 'Logging'
@@ -93,6 +94,10 @@ I_AUTOMATED_CHECKS: Final[str] = 'Automated checks'
 I_KEY: Final[str] = 'Key'
 I_IMPORTNOTE: Final[str] = 'Status note'
 I_IMPORTTYPE: Final[str] = 'Status type'
+# Extra columns which are to be copied from the import to export files as-is
+I_COLUMNSEXTRA: Final[list[str]] = [
+    # 'Sensitive'   # Used by Merseyside BioBank
+]
 
 I_COLUMNS: Final[list[str]] = [
     I_KEY,
@@ -143,7 +148,7 @@ I_COLUMNS: Final[list[str]] = [
     I_VERIFIED_ON,
     I_LICENCE,
     I_AUTOMATED_CHECKS
-]
+] + I_COLUMNSEXTRA
 
 # ------------------------------------------------------------------------------
 # Swift export columns headers
@@ -180,7 +185,8 @@ S_COLUMNS: Final[list[str]] = [
     S_COMMENTS,
     S_DETERMINATION_TYPE,
     S_DETERMINAION_COMMENT
-]
+] + I_COLUMNSEXTRA
+
 # ------------------------------------------------------------------------------
 # Orders making up the Insecta class (classes not included in iRecord exports).
 

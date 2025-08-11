@@ -7,6 +7,7 @@ About  : Utility classes and functions.
 import logging
 import re
 import time
+import pandas as pd
 from word2number import w2n
 
 import const
@@ -100,6 +101,30 @@ def is_order_insect(order: str) -> bool:
         (bool) - True if Insecta, else False
     '''
     return order.lower() in const.ORDERS_INSECTA
+
+# ------------------------------------------------------------------------------
+
+def read_csv_robust(file_path: str) -> pd.DataFrame:
+    '''Robustly read a CSV file, trying multiple encodings and delimiters.
+    Args: 
+        order (string) - text to search
+    Returns: 
+        (bool) - True if Insecta, else False#
+    '''
+    # Try multiple encodings and delimiters
+    encodings = ['utf-8-sig', 'utf-8', 'ISO-8859-1']
+    delimiters = [',', ';']
+
+    for enc in encodings:
+        for delim in delimiters:
+            try:
+                df = pd.read_csv(file_path, encoding=enc, delimiter=delim)
+                return df
+            except UnicodeDecodeError:
+                continue
+            except pd.errors.ParserError:
+                continue
+    raise ValueError(f'Could not read CSV file: {file_path}')
 
 # ------------------------------------------------------------------------------
 

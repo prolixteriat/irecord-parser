@@ -34,6 +34,7 @@ class ConfigMgr:
     file_exc_taxons: str = ''     # path to family-exluded insect taxons
     file_gis: str = ''            # path to GIS shape file
     file_permissions: str = ''    # path to iNaturalist permissions file
+    file_processed: str = ''      # path to processed records file
     file_rec_type: str = ''       # path to sample method / record type map file
     file_users: str = ''          # path to user identities & permissions file
     plot: bool = True             # plot region chart
@@ -78,9 +79,10 @@ class ConfigMgr:
         f3 = check_file(self.file_exc_taxons, const.C_FILE_EXC_TAXONS)
         f4 = check_file(self.file_gis, const.C_FILE_GIS)
         f5 = check_file(self.file_permissions, const.C_FILE_PERMS)
-        f6 = check_file(self.file_rec_type, const.C_FILE_REC_TYPE)
-        f7 = check_file(self.file_users, const.C_FILE_USERS)
-        if not (f1 and f2 and f3 and f4 and f5 and f6 and f7):
+        f6 = check_file(self.file_processed, const.C_FILE_PROCESSED)
+        f7 = check_file(self.file_rec_type, const.C_FILE_REC_TYPE)
+        f8 = check_file(self.file_users, const.C_FILE_USERS)
+        if not (f1 and f2 and f3 and f4 and f5 and f6 and f7 and f8):
             raise OSError('One or more config files do not exist')
 
     # --------------------------------------------------------------------------
@@ -102,8 +104,8 @@ class ConfigMgr:
         # [Data]
         if const.C_DATA in self.config:
             s_data = self.config[const.C_DATA]
-            self.dir_data_in = s_data.get(const.C_FOLDER_IN)
-            self.dir_data_out = s_data.get(const.C_FOLDER_OUT)
+            self.dir_data_in = s_data.get(const.C_FOLDER_IN, '../Data_In/')
+            self.dir_data_out = s_data.get(const.C_FOLDER_OUT, '../Data_Out/')
         else:
             log.error(errmsg, self.fn_config, const.C_DATA)
         # [Files]
@@ -113,6 +115,7 @@ class ConfigMgr:
             self.file_duplicates = s_files.get(const.C_FILE_DUPLICATES, '')
             self.file_gis = s_files.get(const.C_FILE_GIS, '')
             self.file_permissions = s_files.get(const.C_FILE_PERMS, '')
+            self.file_processed = s_files.get(const.C_FILE_PROCESSED, '')
             self.file_rec_type = s_files.get(const.C_FILE_REC_TYPE, '')
             self.file_users = s_files.get(const.C_FILE_USERS, '')
             self.file_exc_taxons = s_files.get(const.C_FILE_EXC_TAXONS, '')

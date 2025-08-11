@@ -6,12 +6,13 @@ About  : Implements the Crosschecker class which provides loads external
 # ------------------------------------------------------------------------------
 
 import logging
-from typing import TypedDict
+from typing import Set, TypedDict
 
 import pandas as pd
-
+import const
 from georegion import GeoRegion
 from configmgr import ConfigMgr
+from utils import read_csv_robust
 
 # ------------------------------------------------------------------------------
 
@@ -42,6 +43,7 @@ class Crosschecker:
         self.abundance: dict[tuple[str, str], str] = {}
         self.excluded_taxons: dict[str, str] = {}
         self.permissions: dict[str, bool] = {}
+        self.processed: Set[str] = set()
         self.sample_methods: dict[str, str] = {}
         self.user_identities: dict[str, UserIdentity] = {}
         self.load_files()
@@ -153,6 +155,18 @@ class Crosschecker:
 
     # --------------------------------------------------------------------------
 
+    def is_processed(self, record_key: str) -> bool:
+        '''Return True if supplied record key has already been processed.
+        Args:
+            key (string) - record key
+        Returns:
+            (bool) - True if record key has already been processed, else False
+        '''
+        rv = record_key.strip().lower() in self.processed
+        return rv
+
+    # --------------------------------------------------------------------------
+
     def load_files(self) -> None:
         '''Load and parse external reference files as defined in config object.
         Args: 
@@ -194,6 +208,14 @@ class Crosschecker:
             # Map dataframe to dictionary containing the columns of interest
             self.permissions = dict((n.lower(), True if p.lower() == 'yes' else False)
                                 for n, p in  zip(df[p_name], df[p_permission]))
+        # Processed records file - use CSV to cope with potentially large no. records
+        self.processed.clear()
+        if len(self.config.file_processed) > 0:
+            log.debug('Loading processed records file: %s', self.config.file_processed)
+            df = read_csv_robust(self.config.file_processed)
+            self.processed = set(df[const.I_RECORDKEY].dropna().astype(str)
+                                .str.strip().str.lower())
+
         # Sample method / record type mapping file -
         self.sample_methods.clear()
         if len(self.config.file_rec_type) > 0:

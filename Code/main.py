@@ -4,7 +4,7 @@ About  : Program entry point. See main() function.
 
 # ------------------------------------------------------------------------------
 
-import getopt
+import argparse
 import logging
 import sys
 import traceback
@@ -30,26 +30,10 @@ def main() -> None:
     Returns: 
         N/A
     '''
-    helpstr = 'main.py -i <INI file path>'
-    try:
-        argv = sys.argv[1:]
-        opts, _ = getopt.getopt(argv,'hi:',['ini='])
-    except getopt.GetoptError:
-        print(f'Incorrect command line option: {argv}')
-        print(f'Correct options are: "{helpstr}"')
-        sys.exit(2)
-
-    # Process command line options
-    fn_config = None
-    for opt, arg in opts:
-        if opt == '-h':
-            print('help')
-            sys.exit()
-        elif opt in ('-i', '--ini'):
-            fn_config = arg
-        else:
-            print(f'Unknown option: {opt}')
-            sys.exit(2)
+    parser = argparse.ArgumentParser(description='iRecord Parser')
+    parser.add_argument('-i', '--ini', required=True, help='INI file path')
+    args = parser.parse_args()
+    fn_config = args.ini
 
     # Execute the processing
     log.info('='*50)

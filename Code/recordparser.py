@@ -40,12 +40,14 @@ class RecordParser:
         Returns: 
             N/A
         '''
-        self.config: ConfigMgr = config # instance of ConfigMgr class
+        self.config: ConfigMgr = config   # instance of ConfigMgr class
         self.crosscheck: Crosschecker = Crosschecker(self.config)
-        self.filename: str = ''         # input filename
-        self.records: Records = []      # Records read from file
-        self.skipped: Records = []      # Records skipped in Swift format
-        self.swift: Records = []        # Records to be exported in Swift format
+        self.filename: str = ''           # input filename
+        self.key_processed: Records = []  # Previously processed records
+        self.key_new: Records = []        # New records
+        self.records: Records = []        # Records read from file
+        self.skipped: Records = []        # Records skipped in Swift format
+        self.swift: Records = []          # Records to be exported in Swift format
 
     # --------------------------------------------------------------------------
 
@@ -113,6 +115,8 @@ class RecordParser:
             # Apply formatting to the sheet
             sheet = writer.sheets[name]
             sheet.freeze_panes(1, freeze_col)
+            if len(cols) == 1:
+                sheet.set_column(0, 0, 20)
             for col_num, value in enumerate(df.columns.values):
                 sheet.write(0, col_num, value, formatxls)
         # ----------------------------------------------------------------------
@@ -136,6 +140,7 @@ class RecordParser:
             add_sheet(writer, 'Key', self.records, const.I_COLUMNS, formatxls, 1)
             add_sheet(writer, 'Swift', self.swift, const.S_COLUMNS, formatxls, 3)
             add_sheet(writer, 'Skipped', self.skipped, const.S_COLUMNS, formatxls, 3)
+            add_sheet(writer, 'Processed', self.key_processed, [const.I_RECORDKEY], formatxls, 0)
 
     # --------------------------------------------------------------------------
 
@@ -156,7 +161,8 @@ class RecordParser:
             with open(fn, 'w', encoding='utf-8') as out_file:
                 writer = csv.DictWriter(out_file, lineterminator='\r',
                                         quoting=csv.QUOTE_NONNUMERIC,
-                                        fieldnames=fields)
+                                        fieldnames=fields,
+                                        extrasaction='ignore')
                 writer.writeheader()
                 writer.writerows(data)
         # ----------------------------------------------------------------------
@@ -165,6 +171,9 @@ class RecordParser:
         write_file('_key', self.records, const.I_COLUMNS)
         write_file('_skip', self.skipped, const.S_COLUMNS)
         write_file('_swift', self.swift, const.S_COLUMNS)
+        write_file('_processed', self.key_processed, [const.I_RECORDKEY])
+        # Update the processed records file
+        self.update_processed()
         # Only produce Excel workbook if config flag set
         if self.config.excel is True:
             # Use threading to allow spinner animation
@@ -175,7 +184,6 @@ class RecordParser:
                     spin.next()
                     time.sleep(0.1)
             thread.join()
-
     # --------------------------------------------------------------------------
 
     def process_records(self) -> None:
@@ -203,10 +211,15 @@ class RecordParser:
                     self.skipped += res
                 else:
                     self.swift += res
-
+                # Determine whether the record has been previously processed
+                if self.crosscheck.is_processed(rec[const.I_RECORDKEY]):
+                    self.key_processed.append(rec)
+                else:
+                    self.key_new.append(rec)
         log.info('Number of iRecord records: %s', f'{len(self.records):,}')
         log.info('Number of skipped records: %s', f'{len(self.skipped):,}')
         log.info('Number of Swift records: %s', f'{len(self.swift):,}')
+        log.info('Number of previously processed records: %s', f'{len(self.key_processed):,}')
         self.crosscheck.georegion.plot(self.filename)
         _, outside = self.crosscheck.georegion.count()
         log.info('Number of gridrefs outside region: %s', f'{outside:,}')
@@ -222,13 +235,17 @@ class RecordParser:
             (bool) - True if successful, else False
         '''
         log.info('Reading file: %s', fn)
+        # Initialise
         self.filename = fn
+        self.key_new.clear()
+        self.key_processed.clear()
         self.records.clear()
         self.skipped.clear()
         self.swift.clear()
         rv: bool = True
         self.crosscheck.georegion.reset()
         self.records.clear()
+        # Read file
         with open(fn, mode='r', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             for ix, dct in enumerate(reader):
@@ -242,6 +259,26 @@ class RecordParser:
             self.process_records()
 
         return rv
+    # --------------------------------------------------------------------------
+
+    def update_processed(self):
+        '''Update the processed records file.
+        Args: 
+            N/A
+        Returns: 
+            N/A
+        '''
+        fn = self.config.file_processed
+        if len(fn) == 0:
+            log.debug('No processed file to update')
+            return
+        log.info('Updating processed file: %s', fn)
+        df = utils.read_csv_robust(fn)
+        # Extract RecordKey from each object
+        record_keys = [obj[const.I_RECORDKEY] for obj in self.key_new]
+        new_df = pd.DataFrame(record_keys, columns=[df.columns[0]])
+        df = pd.concat([df, new_df], ignore_index=True).drop_duplicates()
+        df.to_csv(fn, index=False, encoding='utf-8-sig')
 
 # ------------------------------------------------------------------------------
 

@@ -304,6 +304,10 @@ class Rules:
         s[const.S_COMMENTS] = ''
         s[const.S_DETERMINATION_TYPE] = ''
         s[const.S_DETERMINAION_COMMENT] = ''
+        # Initialise additional columns which are copied without processing
+        for col in const.I_COLUMNSEXTRA:
+            s[col] = self.record[col] if col in self.record else ''
+
         self.swift.append(s)
 
     # --------------------------------------------------------------------------
