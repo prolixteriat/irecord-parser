@@ -1,4 +1,5 @@
 @echo off
-cd irecord2swift
-call irecord2swift.exe
+echo Press any key to begin processing
+cd .\Code\
+pipenv run python main.py -i "..\Config\config.ini"
 pause

@@ -33,7 +33,7 @@ In order to install this project's dependencies, from within the `Code` folder r
 ## Standalone Execution
 - You can build a standalone executable version of the script using the following command from with the `Code` folder:
 ```
-pyinstaller main.py --name irecord2swift --hidden-import fiona._shim --distpath <targetdir>
+pipenv run pyinstaller main.py --name irecord2swift --hidden-import fiona._shim --distpath <targetdir>
 ```
 - Once created, you can use the `run.bat` batch file to execute the script.
 

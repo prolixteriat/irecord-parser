@@ -12,7 +12,7 @@ import pandas as pd
 import const
 from georegion import GeoRegion
 from configmgr import ConfigMgr
-from utils import read_csv_robust
+from utils import make_file_backup, read_csv_robust
 
 # ------------------------------------------------------------------------------
 
@@ -212,6 +212,7 @@ class Crosschecker:
         self.processed.clear()
         if len(self.config.file_processed) > 0:
             log.debug('Loading processed records file: %s', self.config.file_processed)
+            make_file_backup(self.config.file_processed)
             df = read_csv_robust(self.config.file_processed)
             self.processed = set(df[const.I_RECORDKEY].dropna().astype(str)
                                 .str.strip().str.lower())

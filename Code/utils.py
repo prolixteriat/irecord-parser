@@ -6,8 +6,11 @@ About  : Utility classes and functions.
 
 import logging
 import re
+import shutil
 import time
 import pandas as pd
+from datetime import datetime
+from pathlib import Path
 from word2number import w2n
 
 import const
@@ -104,12 +107,28 @@ def is_order_insect(order: str) -> bool:
 
 # ------------------------------------------------------------------------------
 
+def make_file_backup(file_path: str) -> None:
+    '''Make a backup of a file.
+    Args: 
+        file_path (string) - path to file to 
+    Returns: 
+        N/A
+    '''
+    src = Path(file_path)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_folder = src.parent / 'Backup'
+    backup_folder.mkdir(exist_ok=True)
+    dst = backup_folder / f'{src.stem}_{timestamp}{src.suffix}'
+    shutil.copy2(src, dst)
+
+# ------------------------------------------------------------------------------
+
 def read_csv_robust(file_path: str) -> pd.DataFrame:
     '''Robustly read a CSV file, trying multiple encodings and delimiters.
     Args: 
-        order (string) - text to search
+        file_path (string) - path to CSV file to read
     Returns: 
-        (bool) - True if Insecta, else False#
+        (DataFrame) - Pandas data frame containing CSV file contents
     '''
     # Try multiple encodings and delimiters
     encodings = ['utf-8-sig', 'utf-8', 'ISO-8859-1']
