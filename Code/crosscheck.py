@@ -223,9 +223,12 @@ class Crosschecker:
             log.debug('Loading sample method/record type file: %s', self.config.file_rec_type)
             df = pd.read_excel(self.config.file_rec_type)
             # Map dataframe to dictionary containing the columns of interest
-            self.sample_methods = dict((s.lower(), r) for s, r in
-                                    zip(df['Sample Method'], df['Record Type']))
-        # User identities file -
+            self.sample_methods = {
+                str(s).lower(): r
+                for s, r in zip(df['Sample Method'], df['Record Type'])
+            }
+
+        # User identities file
         # define column headers
         i_username = ("Please enter your iRecord/iNaturalist username. (If you "
                       "use multiple recording platforms, e.g., bird track and "
