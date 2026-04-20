@@ -11,9 +11,10 @@ xlsxwriter = "*"
 bng = "*"
 pandas = "*"
 progress = "*"
-pyinstaller = "*"
 fiona = "*"
 openpyxl = "*"
+pyinstaller = "*"
+pillow = "*"
 
 [dev-packages]
 autopep8 = "*"
