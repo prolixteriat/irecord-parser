@@ -5,7 +5,6 @@ name = "pypi"
 
 [packages]
 word2number = "*"
-geopandas = "*"
 matplotlib = "*"
 xlsxwriter = "*"
 bng = "*"
@@ -15,6 +14,7 @@ fiona = "*"
 openpyxl = "*"
 pyinstaller = "*"
 pillow = "*"
+geopandas = "*"
 
 [dev-packages]
 autopep8 = "*"
